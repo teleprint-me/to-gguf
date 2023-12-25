@@ -1,1 +1,6 @@
+numpy
+sentencepiece
+torch==2.1.2+cpu  # guarentee universality
+transformers
+safetensors  # supercedes object serialization with pickle
 gguf
