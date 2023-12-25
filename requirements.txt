@@ -1,6 +1,18 @@
+# numpy: Used for numerical operations, a fundamental package for scientific computing in Python.
 numpy
+
+# sentencepiece: Library for unsupervised text tokenization, essential for language model vocabularies.
 sentencepiece
-torch==2.1.2+cpu  # guarentee universality
+
+# torch: Specific version (2.1.2+cpu) ensures compatibility across various setups; focused on CPU variant for universality.
+# Used for handling PyTorch models.
+torch==2.1.2+cpu
+
+# transformers: Hugging Face's library providing pre-trained models and utilities for Natural Language Processing (NLP).
 transformers
-safetensors  # supercedes object serialization with pickle
+
+# safetensors: Provides a secure and efficient method for model serialization, superseding traditional object serialization with pickle.
+safetensors
+
+# gguf: Essential for handling GGUF model file operations, part of the llama.cpp project.
 gguf
