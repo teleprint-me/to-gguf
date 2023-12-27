@@ -36,7 +36,7 @@ class TensorDataType(Enum):
     )
     I8 = Q8_0TensorType(  # Inherits from BasicTensorType
         name="Q8_0",
-        dtype=np.dtype([("d", "<f2"), ("qs", "i1", (32,))]),
+        dtype=np.dtype(np.float32),
         valid_conversions=[],
         block_size=32,
         quantized_dtype=np.dtype([("d", "<f2"), ("qs", "i1", (32,))]),
@@ -89,5 +89,5 @@ SAFETENSORS_DATA_TYPES: Dict[str, TensorDataType] = {
     "F16": TensorDataType.F16,
     "F32": TensorDataType.F32,
     "I32": TensorDataType.I32,
-    "Q8_0": TensorDataType.Q8_0,
+    "I8": TensorDataType.Q8_0,
 }
