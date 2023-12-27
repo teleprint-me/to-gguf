@@ -41,19 +41,24 @@ class RawQuantizedTensor(RawTensor):
     quantized_dtype: np.dtype[Any]
     ggml_type: gguf.GGMLQuantizationType
 
-    def quantize(self, arr: np.ndarray) -> np.ndarray:
+    def _assert_block_size(self, n_elements: int) -> None:
+        assert (
+            n_elements % self.block_size == 0
+        ), f"Invalid number of elements {n_elements} for {self.name} with block size {self.block_size}"
+
+    def quantize(self, array: np.ndarray) -> np.ndarray:
         """
         Quantize the input array according to this tensor's quantization rules.
 
         Args:
-            arr (np.ndarray): Input array to be quantized.
+            array (np.ndarray): Input array to be quantized.
 
         Returns:
             np.ndarray: Quantized array.
         """
         raise NotImplementedError(f"Quantization for {self.name} not implemented")
 
-    def elements_to_bytes(self, n_elements: int) -> int:
+    def tensor_to_bytes(self, n_elements: int) -> int:
         """
         Calculate the number of bytes required to store the quantized tensor's data.
 
@@ -63,9 +68,7 @@ class RawQuantizedTensor(RawTensor):
         Returns:
             int: Number of bytes needed.
         """
-        assert (
-            n_elements % self.block_size == 0
-        ), f"Invalid number of elements {n_elements} for {self.name} with block size {self.block_size}"
+        self._assert_block_size(n_elements)
         return self.quantized_dtype.itemsize * (n_elements // self.block_size)
 
 
@@ -75,30 +78,52 @@ class RawQ8_0Tensor(RawQuantizedTensor):
     Represents a raw tensor with Q8_0 quantization.
     """
 
-    def quantize(self, arr: np.ndarray) -> np.ndarray:
+    def _assert_valid_array(self, array: np.ndarray) -> None:
+        """
+        Asserts that the input array is valid for Q8_0 quantization.
+
+        Args:
+            array (np.ndarray): Input array to be checked.
+
+        Raises:
+            AssertionError: If the array size or type is invalid.
+        """
+        assert (
+            array.size % self.block_size == 0 and array.size != 0
+        ), f"Invalid array size {array.size}"
+        assert array.dtype == np.float32, f"Invalid array type {array.dtype}"
+
+    def _quantize_blocks_q8_0(self, blocks: np.ndarray) -> Iterable[tuple[Any, Any]]:
+        """
+        Quantizes blocks of values using Q8_0 quantization.
+
+        Args:
+            blocks (np.ndarray): Blocks of input values to be quantized.
+
+        Yields:
+            Iterable[tuple[Any, Any]]: Yields tuples of scaling factors and quantized values.
+        """
+        scaling_factors = abs(blocks).max(axis=1) / np.float32(127)
+        with np.errstate(divide="ignore"):
+            quantized_blocks = (blocks / scaling_factors[:, None]).round()
+        quantized_blocks[scaling_factors == 0] = 0
+        yield from zip(scaling_factors, quantized_blocks)
+
+    def quantize(self, array: np.ndarray) -> np.ndarray:
         """
         Quantize the input array using Q8_0 quantization.
 
         Args:
-            arr (np.ndarray): Input array to be Q8_0 quantized.
+            array (np.ndarray): Input array to be Q8_0 quantized.
 
         Returns:
             np.ndarray: Q8_0 quantized array.
         """
-        assert (
-            arr.size % self.block_size == 0 and arr.size != 0
-        ), f"Bad array size {arr.size}"
-        assert arr.dtype == np.float32, f"Bad array type {arr.dtype}"
-        n_blocks = arr.size // self.block_size
-        blocks = arr.reshape((n_blocks, self.block_size))
-
-        def quantize_blocks_q8_0(blocks: np.ndarray) -> Iterable[tuple[Any, Any]]:
-            d = abs(blocks).max(axis=1) / np.float32(127)
-            with np.errstate(divide="ignore"):
-                qs = (blocks / d[:, None]).round()
-            qs[d == 0] = 0
-            yield from zip(d, qs)
-
+        self._assert_valid_array(array)
+        n_blocks = array.size // self.block_size
+        blocks = array.reshape((n_blocks, self.block_size))
         return np.fromiter(
-            quantize_blocks_q8_0(blocks), count=n_blocks, dtype=self.quantized_dtype
+            self._quantize_blocks_q8_0(blocks),
+            count=n_blocks,
+            dtype=self.quantized_dtype,
         )
