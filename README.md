@@ -35,8 +35,7 @@ This project is an extension of the `llama.cpp` project, focused on streamlining
 This section will be updated with specific instructions on how to use the tools and scripts provided by this project for converting and handling `gguf` model files.
 
 ## Contributing
-We welcome contributions to this project. If you have suggestions, bug reports, or want to contribute code, please feel free to do so.
+Contributions are welcome. If you have suggestions, bug reports, or want to contribute code, please feel free to do so.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. This mirrors the licensing of the parent `llama.cpp` project.
-
