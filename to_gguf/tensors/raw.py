@@ -9,32 +9,45 @@ import numpy as np
 
 
 @dataclass(frozen=True)
-class RawTensor:
+class BasicTensorType:
     """
-    Represents a raw tensor without quantization.
+    Describes the fundamental data type of a tensor, focusing on its unquantized form.
+    This class provides details about the data type's characteristics, including its name,
+    numpy data type, and a list of valid types to which it can be converted.
+
+    Attributes:
+        name (str): The name of the tensor data type.
+        dtype (np.dtype[Any]): The numpy data type of the tensor.
+        valid_conversions (list[str]): A list of names of other data types to which
+                                       this data type can be validly converted.
+
+    Methods:
+        tensor_to_bytes(n_elements: int) -> int: Calculates the number of bytes required
+                                                 to store a specified number of elements
+                                                 of this data type.
     """
 
     name: str
     dtype: np.dtype[Any]
     valid_conversions: list[str]
 
-    def tensor_to_bytes(self, n_elements: int) -> int:
+    def compute_byte_size(self, n_elements: int) -> int:
         """
         Calculate the number of bytes required to store the tensor's data.
 
         Args:
-            n_elements (int): Number of elements in the tensor.
+            n_elements (int): The number of elements in the tensor.
 
         Returns:
-            int: Number of bytes needed.
+            int: The number of bytes needed to store the specified number of elements.
         """
         return n_elements * self.dtype.itemsize
 
 
 @dataclass(frozen=True)
-class RawQuantizedTensor(RawTensor):
+class QuantizedTensorType(BasicTensorType):
     """
-    Represents a raw tensor with quantization.
+    Describes the fundamental data type of a tensor, focusing on its quantized form.
     """
 
     block_size: int
@@ -58,7 +71,7 @@ class RawQuantizedTensor(RawTensor):
         """
         raise NotImplementedError(f"Quantization for {self.name} not implemented")
 
-    def tensor_to_bytes(self, n_elements: int) -> int:
+    def compute_byte_size(self, n_elements: int) -> int:
         """
         Calculate the number of bytes required to store the quantized tensor's data.
 
@@ -73,9 +86,9 @@ class RawQuantizedTensor(RawTensor):
 
 
 @dataclass(frozen=True)
-class RawQ8_0Tensor(RawQuantizedTensor):
+class Q8_0TensorType(QuantizedTensorType):
     """
-    Represents a raw tensor with Q8_0 quantization.
+    Describes the fundamental data type of a tensor, focusing on its 8-bit quantized form.
     """
 
     def _assert_valid_array(self, array: np.ndarray) -> None:
