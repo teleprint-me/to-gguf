@@ -17,25 +17,25 @@ class AbstractTensor(metaclass=ABCMeta):
     fundamental characteristics such as data format and quantization.
 
     Attributes:
-        data_type (BasicTensorType): Descriptor defining the tensor's data type.
+        tensor_type (BasicTensorType): Descriptor defining the tensor's data type.
 
     Methods:
-        astype(data_type: BasicTensorType) -> Tensor: Converts the tensor to the specified data type.
+        astype(tensor_type: BasicTensorType) -> Tensor: Converts the tensor to the specified data type.
         permute(n_head: int, n_head_kv: int) -> Tensor: Rearranges the tensor's dimensions.
         permute_part(n_part: int, n_head: int, n_head_kv: int) -> Tensor: Permutes a part of the tensor.
         part(n_part: int) -> Tensor: Extracts a part of the tensor.
         to_ggml() -> Tensor: Converts the tensor to a format compatible with GGML.
     """
 
-    data_type: BasicTensorType
+    tensor_type: BasicTensorType
 
     @abstractmethod
-    def astype(self, data_type: BasicTensorType) -> "AbstractTensor":
+    def astype(self, tensor_type: BasicTensorType) -> "AbstractTensor":
         """
         Converts the tensor to the specified data type.
 
         Args:
-            data_type (BasicTensorType): The data type to convert the tensor to.
+            tensor_type (BasicTensorType): The data type to convert the tensor to.
 
         Returns:
             Tensor: A new tensor of the specified data type.
