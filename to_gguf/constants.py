@@ -3,61 +3,91 @@ to_gguf/constants.py
 
 Centralized constants and mappings for model conversion processes.
 """
-from enum import Enum
-from typing import Dict, NamedTuple, Tuple
 
+from enum import Enum, IntEnum
+from typing import Dict, Tuple
+
+import gguf
 import numpy as np
-from gguf.constants import MODEL_ARCH
+
+from to_gguf.tensors.data_types import BasicTensorType, Q8_0TensorType
 
 
-class DataTypeTuple(NamedTuple):
-    dtype: np.dtype
-    valid_conversions: list[str]
-
-
-class DataType(Enum):
-    F16 = DataTypeTuple(np.float16, ["F32", "Q8_0"])
-    F32 = DataTypeTuple(np.float32, ["F16", "Q8_0"])
-    I32 = DataTypeTuple(np.int16, [])
-    BF16 = DataTypeTuple(np.uint16, ["F32", "F16", "Q8_0"])
-    I8 = DataTypeTuple(np.dtype([("d", "<f2"), ("qs", "i1", (32,))]), [])  # Q8_0
+class TensorDataType(Enum):
+    F16 = BasicTensorType(
+        name="F16",
+        dtype=np.float16,
+        valid_conversions=["F32", "Q8_0"],
+    )
+    F32 = BasicTensorType(
+        name="F32",
+        dtype=np.float32,
+        valid_conversions=["F16", "Q8_0"],
+    )
+    I32 = BasicTensorType(
+        name="I32",
+        dtype=np.int16,
+        valid_conversions=[],
+    )
+    BF16 = BasicTensorType(
+        name="BF16",
+        dtype=np.uint16,
+        valid_conversions=["F32", "F16", "Q8_0"],
+    )
+    I8 = Q8_0TensorType(  # Inherits from BasicTensorType
+        name="Q8_0",
+        dtype=np.dtype([("d", "<f2"), ("qs", "i1", (32,))]),
+        valid_conversions=[],
+        block_size=32,
+        quantized_dtype=np.dtype([("d", "<f2"), ("qs", "i1", (32,))]),
+        ggml_type=gguf.GGMLQuantizationType.Q8_0,
+    )
 
 
 # GGML File Type to Data Type Mapping
-class GGMLFileType(Enum):
-    # NOTE: GGMLFileType's are referenced by index value.
-    # e.g., AllF32 is 0, MostlyF16 is 1, and MostlyQ8_0 is 7
-    # This mapping affects processing and execution.
-    # Need to solve this problem sooner than later.
-    AllF32 = DataType.F32
-    MostlyF16 = DataType.F16  # Except 1D tensors
-    MostlyQ8_0 = DataType.I8  # Except 1D tensors
+class GGMLFileType(IntEnum):
+    AllF32 = 0
+    MostlyF16 = 1  # Except 1D Tensors
+    MostlyQ8_0 = 7  # Except 1D Tensors
 
-    def type_for_tensor(self, name: str, tensor_shape: Tuple[int, ...]) -> DataType:
-        """Determine the appropriate DataType for a given tensor in the file."""
-        # 1D tensors are always F32.
-        return self.value if len(tensor_shape) > 1 else DataType.F32.value
+    def type_for_tensor(self, tensor_shape: Tuple[int, ...]) -> BasicTensorType:
+        """Determine the appropriate DataType for a given tensor in the file.
+
+        Args:
+            tensor_shape (Tuple[int, ...]): Shape of the tensor.
+
+        Returns:
+            TensorDataType: Appropriate data type for the tensor.
+
+        Note:
+            1D tensors are always treated as F32 regardless of the file type.
+        """
+        if len(tensor_shape) > 1:
+            if self == GGMLFileType.AllF32:
+                return TensorDataType.F32
+            elif self == GGMLFileType.MostlyF16:
+                return TensorDataType.F16
+            elif self == GGMLFileType.MostlyQ8_0:
+                return TensorDataType.I8
+        return TensorDataType.F32
 
 
 # Set the LLaMa Architecture
-LLAMA_ARCH = MODEL_ARCH.LLAMA
+LLAMA_ARCH = gguf.constants.MODEL_ARCH.LLAMA
 
 # Default number of threads for concurrent operations
 DEFAULT_CONCURRENCY = 8
 
 # Mapping of NumPy Types to Data Types
-NUMPY_TYPE_TO_DATA_TYPE: Dict[str, DataType] = {dt.name: dt for dt in DataType}
-
-# Mapping of GGML Types to Data Types
-GGML_FILE_TYPE_TO_DATA_TYPE: Dict[str, DataType] = {
-    ft.name: ft.value for ft in GGMLFileType
+NUMPY_TYPE_TO_TENSOR_DATA_TYPE: Dict[np.dtype, TensorDataType] = {
+    dt.dtype: dt for dt in TensorDataType
 }
 
-# Mapping of Safetensors to Data Types
-SAFETENSORS_DATA_TYPES: Dict[str, DataType] = {
-    "BF16": DataType.BF16,
-    "F16": DataType.F16,
-    "F32": DataType.F32,
-    "I32": DataType.I32,
-    "I8": DataType.I8,  # For Q8_0
+# Safetensors data types mapping
+SAFETENSORS_DATA_TYPES: Dict[str, TensorDataType] = {
+    "BF16": TensorDataType.BF16,
+    "F16": TensorDataType.F16,
+    "F32": TensorDataType.F32,
+    "I32": TensorDataType.I32,
+    "Q8_0": TensorDataType.Q8_0,
 }
