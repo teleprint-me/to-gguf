@@ -1,5 +1,5 @@
 """
-to_gguf/constants.py
+to_gguf/tensors/constants.py
 
 Centralized constants and mappings for model conversion processes.
 """
